@@ -96,6 +96,9 @@ export function normalizeGrokHit(raw) {
         ? safe.matchedWords.filter((w) => typeof w === 'string')
         : null,
       matchKind: /TITLE/i.test(String(safe.matchType ?? '')) ? 'title' : 'content',
+      // Grok lists the words it matched anywhere in the conversation, so a
+      // phrase word missing from the list means the phrase isn't there.
+      wordsSpanConversation: true,
     },
   };
 

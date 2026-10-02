@@ -22,7 +22,7 @@
  * as bad, and full-text recall is the point of the tool.
  */
 
-import { STOPWORDS, titleContainsPhrase, titleCoversTerms } from './query.js';
+import { STOPWORDS, titleContainsPhrase, titleCoversTerms, tokenize } from './query.js';
 
 /**
  * Semantic-distance cutoff for a result with no lexical evidence.
@@ -52,6 +52,8 @@ export const TIER = Object.freeze({
  * @property {number|null} semanticRank    null when the hit wasn't semantically ranked
  * @property {string[]} sources            retrieval channels, e.g. `keyword_transcript`, `semantic_summary`
  * @property {string|null} matchKind       `title` | `content`, for labs that say which
+ * @property {boolean} wordsSpanConversation  true when `matchedWords` covers the whole
+ *   conversation (Grok), false when it only covers the title (Claude)
  */
 
 /**
@@ -71,13 +73,36 @@ export function normalizeEvidence(raw) {
     ? raw.sources.filter((s) => typeof s === 'string' && s)
     : [];
   const matchKind = typeof raw?.matchKind === 'string' ? raw.matchKind : null;
-  return { matchedWords, semanticDistance: distance, semanticRank: rank, sources, matchKind };
+  const wordsSpanConversation = raw?.wordsSpanConversation === true;
+  return {
+    matchedWords,
+    semanticDistance: distance,
+    semanticRank: rank,
+    sources,
+    matchKind,
+    wordsSpanConversation,
+  };
 }
 
 /** Words the lab matched that aren't stopwords. */
 function meaningfulMatches(evidence) {
   if (!evidence.matchedWords) return [];
   return evidence.matchedWords.filter((w) => !STOPWORDS.has(w));
+}
+
+/**
+ * True when the lab itemized every word it matched anywhere in the
+ * conversation and one of the phrase's content words is missing. Then the
+ * phrase can't be in there, whatever the lab ranked it. Grok OR-matches the
+ * words, so `"ezra collective"` returned chats that held only one of them.
+ * A matched word may extend the term (`collectives`), never shorten it.
+ * @param {MatchEvidence} evidence
+ * @param {import('./query.js').ParsedQuery} parsed
+ */
+function phraseWordMissing(evidence, parsed) {
+  if (!evidence.wordsSpanConversation || !evidence.matchedWords) return false;
+  const needed = parsed.phrases.flatMap(tokenize).filter((t) => !STOPWORDS.has(t));
+  return needed.some((term) => !evidence.matchedWords.some((w) => w.startsWith(term)));
 }
 
 /** True when any retrieval channel was lexical rather than semantic. */
@@ -143,6 +168,7 @@ export function classifyPointer(pointer, parsed) {
   if (parsed?.hasPhrase) {
     const everyPhraseInTitle = parsed.phrases.every((p) => titleContainsPhrase(title, p));
     if (everyPhraseInTitle) return TIER.STRONG;
+    if (phraseWordMissing(evidence, parsed)) return TIER.WEAK;
     return isWeakMatch(evidence, parsed) ? TIER.WEAK : TIER.UNVERIFIED;
   }
 
