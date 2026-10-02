@@ -54,7 +54,12 @@
  */
 
 import { stripForbiddenFields, pointerHasForbiddenFields } from './results.js';
-import { PLATFORM_TIMEOUT_MS, TAB_COMPLETE_MS, MAX_RESULTS_PER_PLATFORM } from './timeouts.js';
+import {
+  PLATFORM_TIMEOUT_MS,
+  TAB_COMPLETE_MS,
+  MAX_RESULTS_PER_PLATFORM,
+  rejectOnAbort,
+} from './timeouts.js';
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
@@ -161,9 +166,10 @@ export function normalizeGeminiHit(raw) {
  * Run a Gemini search. Returns a result descriptor the service worker turns
  * into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
+ * @param {AbortSignal} [signal] aborts the search (and closes its window) when the request is superseded or cancelled
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
-export async function searchGemini(query) {
+export async function searchGemini(query, signal) {
   let tabId;
   let windowId;
   try {
@@ -189,6 +195,7 @@ export async function searchGemini(query) {
     const response = await Promise.race([
       sendMessageWithInjectRetry(tabId, { type: GEMINI_TAB_SEARCH, query }, 'content/gemini.js'),
       timeout,
+      rejectOnAbort(signal),
     ]);
 
     if (!response) {
@@ -216,7 +223,7 @@ export async function searchGemini(query) {
 
     return { status: pointers.length ? 'ready' : 'empty', results: pointers };
   } catch (err) {
-    if (err?.code === 'timeout') return { status: 'timeout' };
+    if (err?.code === 'timeout' || err?.code === 'cancelled') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Gemini tab.' };
   } finally {
     closeHiddenWindow(windowId);

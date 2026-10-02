@@ -23,8 +23,11 @@
  * A single conversation can appear more than once (title match + one or more
  * content matches) — dedupe by conversation_id (== deep link) downstream.
  *
- * Auth mapping: no accessToken from /api/auth/session, or 401 from search ->
- * login_required. 403/429/5xx -> unavailable. Network error/abort -> timeout.
+ * Auth mapping: a 401 or a 200 without an accessToken from
+ * /api/auth/session, or 401 from search ->
+ * login_required. Any other non-ok status from either call (403 edge
+ * challenge, 429, 5xx) is an outage, not a sign-out -> unavailable.
+ * Network error/abort -> timeout.
  * This is intentionally the generic S5-style mapping, not something ChatGPT
  * needed its own rule for. A raw network-level failure (not a bad status
  * code) is retried once before being treated as unavailable/timeout.
@@ -87,11 +90,13 @@ export function normalizeChatgptHit(raw) {
  * Run a ChatGPT search. Returns a result descriptor the service worker turns
  * into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
+ * @param {AbortSignal} [signal] aborts the search when the request is superseded or cancelled
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
-export async function searchChatgpt(query) {
+export async function searchChatgpt(query, signal) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PLATFORM_TIMEOUT_MS);
+  signal?.addEventListener('abort', () => controller.abort(), { once: true });
 
   try {
     let session;
@@ -102,8 +107,15 @@ export async function searchChatgpt(query) {
           signal: controller.signal,
         }),
       );
-      if (!sessionRes.ok) {
+      if (sessionRes.status === 401) {
         return { status: 'login_required', loginUrl: `${ORIGIN}/` };
+      }
+      if (!sessionRes.ok) {
+        // A rate limit, outage or edge challenge is not a sign-out.
+        return {
+          status: 'unavailable',
+          message: `ChatGPT session check failed (${sessionRes.status}).`,
+        };
       }
       session = await sessionRes.json();
     } catch (err) {

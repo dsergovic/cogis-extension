@@ -1,4 +1,10 @@
-import { MSG, createSearchRequest, shouldApplyChunk, normalizeQuery } from '../lib/messaging.js';
+import {
+  MSG,
+  createSearchRequest,
+  createSearchCancel,
+  shouldApplyChunk,
+  normalizeQuery,
+} from '../lib/messaging.js';
 import { PLATFORM_ORDER, getPlatform, FOOTNOTE_TEXT, loginRequiredCopy } from '../lib/platforms.js';
 import { resolveResultHref, truncateTitle } from '../lib/results.js';
 import { parseQuery, highlightTarget } from '../lib/query.js';
@@ -241,7 +247,14 @@ function clearWatchdog() {
   }
 }
 
+/** Tell the background to stop the active search, so its hidden lab windows close now rather than at timeout. */
+function cancelActiveSearch() {
+  if (!activeRequestId) return;
+  chrome.runtime.sendMessage(createSearchCancel({ requestId: activeRequestId })).catch(() => {});
+}
+
 function startSearch(query) {
+  cancelActiveSearch();
   const requestId = crypto.randomUUID();
   activeRequestId = requestId;
   activeQuery = query;
@@ -361,6 +374,8 @@ chrome.runtime.onMessage.addListener((message) => {
 // "Open in new tab" (or just alt-tabbing away) shouldn't lose your results;
 // Escape is the explicit way to dismiss it.
 input.focus();
+
+window.addEventListener('pagehide', cancelActiveSearch);
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') window.close();
