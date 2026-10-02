@@ -213,7 +213,10 @@ function closeHiddenFrame(lab) {
  * @returns {Promise<any|null>}
  */
 export async function tryHiddenFrame({ lab, url, domains, message, looksLoggedOut }) {
-  if (await hiddenFrameFailedBefore(lab)) return null;
+  if (await hiddenFrameFailedBefore(lab)) {
+    console.info(`[Cogis] ${lab}: hidden frame failed earlier this session; using a window.`);
+    return null;
+  }
   try {
     const response = await runInHiddenFrame({
       lab,
@@ -224,11 +227,18 @@ export async function tryHiddenFrame({ lab, url, domains, message, looksLoggedOu
       answerMs: PLATFORM_TIMEOUT_MS,
     });
     if (!response || looksLoggedOut(response)) {
+      // Status and message only: never the response body, which can carry results.
+      console.warn(
+        `[Cogis] ${lab}: hidden frame answered but looked logged out or failed`,
+        response ? { status: response.status, ok: response.ok, message: response.message } : null,
+      );
       await markHiddenFrameFailed(lab);
       return null;
     }
+    console.info(`[Cogis] ${lab}: searched in the hidden frame.`);
     return response;
-  } catch {
+  } catch (err) {
+    console.warn(`[Cogis] ${lab}: hidden frame failed (${err?.code ?? 'error'}): ${err?.message}`);
     await markHiddenFrameFailed(lab);
     return null;
   }
