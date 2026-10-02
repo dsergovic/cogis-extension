@@ -64,6 +64,7 @@ import {
   openTabFailureMessage,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
+import { tryHiddenFrame } from './hidden-frame.js';
 
 const ORIGIN = 'https://www.perplexity.ai';
 
@@ -141,12 +142,64 @@ async function ensurePerplexityTab() {
 }
 
 /**
+ * Turn the Perplexity content script's response into a result descriptor.
+ * @param {any} response
+ * @returns {{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }}
+ */
+function perplexityOutcome(response) {
+  if (!response) {
+    return { status: 'unavailable', message: 'Perplexity tab did not respond.' };
+  }
+  if (response.status === 401) {
+    return { status: 'login_required', loginUrl: `${ORIGIN}/` };
+  }
+  if (!response.ok) {
+    return { status: 'unavailable', message: `Perplexity search failed (${response.status}).` };
+  }
+
+  const edges = response.json?.data?.viewer?.typeaheadSearch?.edges;
+  if (!Array.isArray(edges)) {
+    return { status: 'unavailable', message: 'Perplexity returned an unexpected response.' };
+  }
+
+  const seen = new Set();
+  const pointers = [];
+  for (const edge of edges) {
+    const pointer = normalizePerplexityHit(edge);
+    if (!pointer) continue;
+    const key = pointer.deepLinkUrl;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pointers.push(pointer);
+    if (pointers.length >= MAX_RESULTS_PER_PLATFORM) break;
+  }
+
+  return { status: pointers.length ? 'ready' : 'empty', results: pointers };
+}
+
+/**
  * Run a Perplexity search. Returns a result descriptor the service worker
  * turns into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
 export async function searchPerplexity(query) {
+  // A perplexity.ai tab the user already has open is used as-is (no window
+  // needed); the hidden frame only replaces opening a hidden window.
+  const openTabs = await chrome.tabs
+    .query({ url: ['https://www.perplexity.ai/*', 'https://perplexity.ai/*'] })
+    .catch(() => []);
+  if (!openTabs.length) {
+    const framed = await tryHiddenFrame({
+      lab: 'perplexity',
+      url: `${ORIGIN}/`,
+      domains: ['perplexity.ai'],
+      message: { type: PERPLEXITY_TAB_SEARCH, query },
+      looksLoggedOut: (r) => !r.ok,
+    });
+    if (framed) return perplexityOutcome(framed);
+  }
+
   let tabInfo;
   try {
     tabInfo = await ensurePerplexityTab();
@@ -174,34 +227,7 @@ export async function searchPerplexity(query) {
       timeout,
     ]);
 
-    if (!response) {
-      return { status: 'unavailable', message: 'Perplexity tab did not respond.' };
-    }
-    if (response.status === 401) {
-      return { status: 'login_required', loginUrl: `${ORIGIN}/` };
-    }
-    if (!response.ok) {
-      return { status: 'unavailable', message: `Perplexity search failed (${response.status}).` };
-    }
-
-    const edges = response.json?.data?.viewer?.typeaheadSearch?.edges;
-    if (!Array.isArray(edges)) {
-      return { status: 'unavailable', message: 'Perplexity returned an unexpected response.' };
-    }
-
-    const seen = new Set();
-    const pointers = [];
-    for (const edge of edges) {
-      const pointer = normalizePerplexityHit(edge);
-      if (!pointer) continue;
-      const key = pointer.deepLinkUrl;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      pointers.push(pointer);
-      if (pointers.length >= MAX_RESULTS_PER_PLATFORM) break;
-    }
-
-    return { status: pointers.length ? 'ready' : 'empty', results: pointers };
+    return perplexityOutcome(response);
   } catch (err) {
     if (err?.code === 'timeout') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Perplexity tab.' };

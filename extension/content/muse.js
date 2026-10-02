@@ -128,7 +128,7 @@ if (!window.__cogisMuseSearchInstalled) {
     }
   };
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  const handleMessage = (message, sendResponse) => {
     if (!message || message.type !== MUSE_TAB_SEARCH) return false;
 
     (async () => {
@@ -161,5 +161,25 @@ if (!window.__cogisMuseSearchInstalled) {
     })();
 
     return true;
-  });
+  };
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) =>
+    handleMessage(message, sendResponse),
+  );
+
+  // Hidden-frame mode (lib/hidden-frame.js): inside a frame, offer a port to
+  // the service worker, which only accepts it from its own tab-less frame.
+  if (window.top !== window) {
+    const port = chrome.runtime.connect({ name: 'cogis-frame:muse' });
+    port.onMessage.addListener((message) => {
+      if (!message || message.type !== MUSE_TAB_SEARCH) return;
+      handleMessage(message, (response) => {
+        try {
+          port.postMessage({ response });
+        } catch {
+          // service worker already gave up on this frame
+        }
+      });
+    });
+  }
 }

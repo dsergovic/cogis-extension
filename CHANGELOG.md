@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 ### Added
+- Invisible search for the tab-driven labs (Perplexity, Gemini, Muse): their
+  search page now loads in a hidden frame inside an offscreen document
+  instead of a window. Chrome 152 no longer allows a fully off-screen window,
+  so the old path had been falling back to a minimized one that flashed in
+  the taskbar. The frame-blocking headers of those three sites are stripped
+  only for this extension's own tab-less frame. A lab that fails or comes up
+  logged out in the frame falls back to the minimized window for the rest of
+  the browser session.
 - Muse (muse.ai) adapter, tab-driven like Gemini. muse.ai searches over a
   WebSocket to a per-account VM with a session-bound token, so Cogis drives
   the site's own search palette in a hidden tab and reads only room titles,

@@ -24,7 +24,7 @@ if (!window.__cogisPerplexitySearchInstalled) {
   const PERPLEXITY_TAB_SEARCH = 'COGIS_PERPLEXITY_TAB_SEARCH';
   const PERSISTED_QUERY_HASH = 'b70669aa090081047346576e89fe68bbc5269c3c2c0de084b980820fee9426a0';
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  const handleMessage = (message, sendResponse) => {
     if (!message || message.type !== PERPLEXITY_TAB_SEARCH) return false;
 
     (async () => {
@@ -47,5 +47,25 @@ if (!window.__cogisPerplexitySearchInstalled) {
     })();
 
     return true;
-  });
+  };
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) =>
+    handleMessage(message, sendResponse),
+  );
+
+  // Hidden-frame mode (lib/hidden-frame.js): inside a frame, offer a port to
+  // the service worker, which only accepts it from its own tab-less frame.
+  if (window.top !== window) {
+    const port = chrome.runtime.connect({ name: 'cogis-frame:perplexity' });
+    port.onMessage.addListener((message) => {
+      if (!message || message.type !== PERPLEXITY_TAB_SEARCH) return;
+      handleMessage(message, (response) => {
+        try {
+          port.postMessage({ response });
+        } catch {
+          // service worker already gave up on this frame
+        }
+      });
+    });
+  }
 }

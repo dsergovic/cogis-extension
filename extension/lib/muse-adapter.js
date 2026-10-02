@@ -59,6 +59,7 @@ import {
   openTabFailureMessage,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
+import { tryHiddenFrame } from './hidden-frame.js';
 
 const ORIGIN = 'https://muse.ai';
 
@@ -207,12 +208,42 @@ export function normalizeMuseItems(items, query, now = new Date()) {
 }
 
 /**
+ * Turn the Muse content script's response into a result descriptor.
+ * @param {any} response
+ * @param {string} query
+ * @returns {{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }}
+ */
+function museOutcome(response, query) {
+  if (!response) {
+    return { status: 'unavailable', message: 'Muse tab did not respond.' };
+  }
+  if (response.status === 'login_required') {
+    return { status: 'login_required', loginUrl: `${ORIGIN}/` };
+  }
+  if (response.status === 'error') {
+    return { status: 'unavailable', message: response.message || 'Muse search failed.' };
+  }
+
+  const pointers = normalizeMuseItems(response.items, query);
+  return { status: pointers.length ? 'ready' : 'empty', results: pointers };
+}
+
+/**
  * Run a Muse search. Returns a result descriptor the service worker turns
  * into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
 export async function searchMuse(query) {
+  const framed = await tryHiddenFrame({
+    lab: 'muse',
+    url: `${ORIGIN}/`,
+    domains: ['muse.ai'],
+    message: { type: MUSE_TAB_SEARCH, query },
+    looksLoggedOut: (r) => r.status !== 'ok',
+  });
+  if (framed) return museOutcome(framed, query);
+
   let tabId;
   let windowId;
   try {
@@ -238,18 +269,7 @@ export async function searchMuse(query) {
       timeout,
     ]);
 
-    if (!response) {
-      return { status: 'unavailable', message: 'Muse tab did not respond.' };
-    }
-    if (response.status === 'login_required') {
-      return { status: 'login_required', loginUrl: `${ORIGIN}/` };
-    }
-    if (response.status === 'error') {
-      return { status: 'unavailable', message: response.message || 'Muse search failed.' };
-    }
-
-    const pointers = normalizeMuseItems(response.items, query);
-    return { status: pointers.length ? 'ready' : 'empty', results: pointers };
+    return museOutcome(response, query);
   } catch (err) {
     if (err?.code === 'timeout') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Muse tab.' };

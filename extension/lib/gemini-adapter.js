@@ -63,6 +63,7 @@ import {
   openTabFailureMessage,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
+import { tryHiddenFrame } from './hidden-frame.js';
 
 const ORIGIN = 'https://gemini.google.com';
 
@@ -158,12 +159,53 @@ export function normalizeGeminiHit(raw) {
 }
 
 /**
+ * Turn the Gemini content script's response into a result descriptor.
+ * @param {any} response
+ * @returns {{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }}
+ */
+function geminiOutcome(response) {
+  if (!response) {
+    return { status: 'unavailable', message: 'Gemini tab did not respond.' };
+  }
+  if (response.status === 'login_required') {
+    return { status: 'login_required', loginUrl: `${ORIGIN}/app` };
+  }
+  if (response.status === 'error') {
+    return { status: 'unavailable', message: response.message || 'Gemini search failed.' };
+  }
+
+  const hits = Array.isArray(response.hits) ? response.hits : [];
+  const seen = new Set();
+  const pointers = [];
+  for (const hit of hits) {
+    const pointer = normalizeGeminiHit(hit);
+    if (!pointer) continue;
+    const key = pointer.deepLinkUrl;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pointers.push(pointer);
+    if (pointers.length >= MAX_RESULTS_PER_PLATFORM) break;
+  }
+
+  return { status: pointers.length ? 'ready' : 'empty', results: pointers };
+}
+
+/**
  * Run a Gemini search. Returns a result descriptor the service worker turns
  * into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
 export async function searchGemini(query) {
+  const framed = await tryHiddenFrame({
+    lab: 'gemini',
+    url: `${ORIGIN}/search`,
+    domains: ['gemini.google.com'],
+    message: { type: GEMINI_TAB_SEARCH, query },
+    looksLoggedOut: (r) => r.status !== 'ok',
+  });
+  if (framed) return geminiOutcome(framed);
+
   let tabId;
   let windowId;
   try {
@@ -191,30 +233,7 @@ export async function searchGemini(query) {
       timeout,
     ]);
 
-    if (!response) {
-      return { status: 'unavailable', message: 'Gemini tab did not respond.' };
-    }
-    if (response.status === 'login_required') {
-      return { status: 'login_required', loginUrl: `${ORIGIN}/app` };
-    }
-    if (response.status === 'error') {
-      return { status: 'unavailable', message: response.message || 'Gemini search failed.' };
-    }
-
-    const hits = Array.isArray(response.hits) ? response.hits : [];
-    const seen = new Set();
-    const pointers = [];
-    for (const hit of hits) {
-      const pointer = normalizeGeminiHit(hit);
-      if (!pointer) continue;
-      const key = pointer.deepLinkUrl;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      pointers.push(pointer);
-      if (pointers.length >= MAX_RESULTS_PER_PLATFORM) break;
-    }
-
-    return { status: pointers.length ? 'ready' : 'empty', results: pointers };
+    return geminiOutcome(response);
   } catch (err) {
     if (err?.code === 'timeout') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Gemini tab.' };
