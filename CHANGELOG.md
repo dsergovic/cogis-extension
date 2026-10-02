@@ -24,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   static page: what Cogis does, the five supported labs, search tips, the
   privacy rules, and install steps linking to GitHub.
 ### Changed
+- Perplexity, Gemini and Muse now share one hidden window per search (a
+  background tab each) instead of opening a window apiece. Since Chrome 152
+  that window can't be off-screen and shows briefly minimized, so this cuts
+  three taskbar flashes to one.
 - Search results are now filtered on the match metadata each lab already
   returns — Grok's matched words, Claude's title ranges and semantic
   distance, ChatGPT's match kind — dropping results that matched only a

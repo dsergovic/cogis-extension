@@ -39,8 +39,8 @@
  *
  * The palette opens from the left rail's magnifier, a div with no label
  * wrapping `[data-hatch-system-lottie-poster="SystemSearch"]` (captured
- * 2026-10-02). It's only in the desktop layout, hence the desktop-sized
- * hidden window below. Still unverified live: that the main chat's address
+ * 2026-10-02). It's only in the desktop layout, which is why the shared
+ * hidden window (tab-messaging.js) is desktop-sized. Still unverified live: that the main chat's address
  * is the site root.
  *
  * Auth mapping: the content script reports `login_required` when the
@@ -54,8 +54,7 @@ import { PLATFORM_TIMEOUT_MS, TAB_COMPLETE_MS, MAX_RESULTS_PER_PLATFORM } from '
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
-  createHiddenTab,
-  closeHiddenWindow,
+  openHiddenSearchTab,
   openTabFailureMessage,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
@@ -66,12 +65,6 @@ const ORIGIN = 'https://muse.ai';
 export const MUSE_TAB_SEARCH = 'COGIS_MUSE_TAB_SEARCH';
 
 const MAIN_CHAT_TITLE = 'Main chat';
-
-/**
- * Desktop-sized, so muse.ai renders its desktop layout (left rail with the
- * search button) rather than a collapsed mobile one.
- */
-const MUSE_WINDOW_SIZE = { width: 1280, height: 800 };
 
 /**
  * @param {string} threadId
@@ -214,11 +207,11 @@ export function normalizeMuseItems(items, query, now = new Date()) {
  */
 export async function searchMuse(query) {
   let tabId;
-  let windowId;
+  let release = () => {};
   try {
-    const hidden = await retryOnce(() => createHiddenTab(`${ORIGIN}/`, MUSE_WINDOW_SIZE));
+    const hidden = await retryOnce(() => openHiddenSearchTab(`${ORIGIN}/`));
     tabId = hidden.tabId;
-    windowId = hidden.windowId;
+    release = hidden.release;
     await waitForTabComplete(tabId, TAB_COMPLETE_MS);
   } catch (err) {
     return { status: 'unavailable', message: openTabFailureMessage('Muse', err) };
@@ -254,6 +247,6 @@ export async function searchMuse(query) {
     if (err?.code === 'timeout') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Muse tab.' };
   } finally {
-    closeHiddenWindow(windowId);
+    release();
   }
 }

@@ -59,8 +59,7 @@ import { PLATFORM_TIMEOUT_MS, TAB_COMPLETE_MS, MAX_RESULTS_PER_PLATFORM } from '
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
-  createHiddenTab,
-  closeHiddenWindow,
+  openHiddenSearchTab,
   openTabFailureMessage,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
@@ -119,25 +118,30 @@ export function normalizePerplexityHit(raw) {
 }
 
 /**
- * Find an existing perplexity.ai tab, or open one in a new, off-screen
- * background window so it never appears in the user's tab strip. Returns the
- * tab id and, if we created it, the window id to close afterward — an
- * adopted user tab (and its window) is never touched. Opening the hidden
- * window is retried once on failure — occasionally transient under normal
+ * Find an existing perplexity.ai tab, or open one in the shared hidden
+ * window (tab-messaging.js) so it never appears in the user's tab strip.
+ * Returns the tab id and a `release` to call when done — a no-op for an
+ * adopted user tab, which (with its window) is never touched. Opening the
+ * hidden tab is retried once on failure — occasionally transient under normal
  * browser load, not usually a sign the platform itself is unreachable.
- * @returns {Promise<{ tabId: number, created: boolean, windowId: number|null }>}
+ * @returns {Promise<{ tabId: number, release: () => void }>}
  */
 async function ensurePerplexityTab() {
   const existing = await chrome.tabs.query({
     url: ['https://www.perplexity.ai/*', 'https://perplexity.ai/*'],
   });
   if (existing.length && typeof existing[0].id === 'number') {
-    return { tabId: existing[0].id, created: false, windowId: null };
+    return { tabId: existing[0].id, release: () => {} };
   }
 
-  const hidden = await retryOnce(() => createHiddenTab(`${ORIGIN}/`));
-  await waitForTabComplete(hidden.tabId, TAB_COMPLETE_MS);
-  return { tabId: hidden.tabId, created: true, windowId: hidden.windowId };
+  const hidden = await retryOnce(() => openHiddenSearchTab(`${ORIGIN}/`));
+  try {
+    await waitForTabComplete(hidden.tabId, TAB_COMPLETE_MS);
+  } catch (err) {
+    hidden.release();
+    throw err;
+  }
+  return hidden;
 }
 
 /**
@@ -206,8 +210,6 @@ export async function searchPerplexity(query) {
     if (err?.code === 'timeout') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Perplexity tab.' };
   } finally {
-    if (tabInfo.created) {
-      closeHiddenWindow(tabInfo.windowId);
-    }
+    tabInfo.release();
   }
 }
