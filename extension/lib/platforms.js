@@ -56,9 +56,21 @@ export const PLATFORMS = {
     loginUrl: 'https://grok.com/',
     hostPatterns: ['https://grok.com/*'],
   },
+  meta: {
+    id: 'meta',
+    label: 'Meta AI',
+    capability: 'full-text',
+    origin: 'https://www.meta.ai',
+    loginUrl: 'https://www.meta.ai/',
+    hostPatterns: ['https://www.meta.ai/*', 'https://meta.ai/*'],
+  },
 };
 
-/** UI group order for implemented platforms, filled in as adapters land. */
+/**
+ * UI group order for implemented platforms, filled in as adapters land.
+ * `meta` is registered but deliberately absent until its live contract is
+ * verified — see extension/lib/meta-adapter.js.
+ */
 export const PLATFORM_ORDER = ['chatgpt', 'claude', 'perplexity', 'gemini', 'grok'];
 
 export const FOOTNOTE_TEXT = 'Some AIs do not support full-text search.';
