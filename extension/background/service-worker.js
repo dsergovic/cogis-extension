@@ -8,7 +8,7 @@ import { searchClaude } from '../lib/claude-adapter.js';
 import { searchPerplexity } from '../lib/perplexity-adapter.js';
 import { searchGemini } from '../lib/gemini-adapter.js';
 import { searchGrok } from '../lib/grok-adapter.js';
-import { searchMeta } from '../lib/meta-adapter.js';
+import { searchMuse } from '../lib/muse-adapter.js';
 
 const tracker = createRequestTracker();
 
@@ -70,7 +70,7 @@ const ADAPTERS = {
   perplexity: searchPerplexity,
   gemini: searchGemini,
   grok: searchGrok,
-  meta: searchMeta,
+  muse: searchMuse,
 };
 
 /**
