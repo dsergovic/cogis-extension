@@ -37,9 +37,11 @@
  *    ("18m ago", "12h ago", "1d ago"). The content script reads only the
  *    date span; the snippet never leaves the page.
  *
- * Unverified, pending a live smoke test: how the palette is opened in a
- * fresh tab (content/muse.js tries a "Search" button, then Cmd/Ctrl+K) and
- * that the main chat's address is the site root.
+ * The palette opens from the left rail's magnifier, a div with no label
+ * wrapping `[data-hatch-system-lottie-poster="SystemSearch"]` (captured
+ * 2026-10-02). It's only in the desktop layout, hence the desktop-sized
+ * hidden window below. Still unverified live: that the main chat's address
+ * is the site root.
  *
  * Auth mapping: the content script reports `login_required` when the
  * palette never opens and the page looks logged out; otherwise a missing
@@ -64,6 +66,12 @@ const ORIGIN = 'https://muse.ai';
 export const MUSE_TAB_SEARCH = 'COGIS_MUSE_TAB_SEARCH';
 
 const MAIN_CHAT_TITLE = 'Main chat';
+
+/**
+ * Desktop-sized, so muse.ai renders its desktop layout (left rail with the
+ * search button) rather than a collapsed mobile one.
+ */
+const MUSE_WINDOW_SIZE = { width: 1280, height: 800 };
 
 /**
  * @param {string} threadId
@@ -208,7 +216,7 @@ export async function searchMuse(query) {
   let tabId;
   let windowId;
   try {
-    const hidden = await retryOnce(() => createHiddenTab(`${ORIGIN}/`));
+    const hidden = await retryOnce(() => createHiddenTab(`${ORIGIN}/`, MUSE_WINDOW_SIZE));
     tabId = hidden.tabId;
     windowId = hidden.windowId;
     await waitForTabComplete(tabId, TAB_COMPLETE_MS);

@@ -27,18 +27,37 @@ if (!window.__cogisMuseSearchInstalled) {
   const findInput = () => document.querySelector(SEARCH_INPUT_SELECTOR);
 
   /**
-   * The palette isn't mounted until opened. Try the rail's search button
-   * first, then the usual command-palette shortcut.
+   * The palette isn't mounted until opened. The left rail's search entry is a
+   * plain div (no button, no aria-label) wrapping a Lottie poster SVG marked
+   * `data-hatch-system-lottie-poster="SystemSearch"` — captured 2026-10-02.
+   * The click handler sits on an ancestor, so a bubbling click from the
+   * nearest HTML ancestor of the SVG reaches it.
    */
+  const RAIL_SEARCH_ICON_SELECTOR = '[data-hatch-system-lottie-poster="SystemSearch"]';
+
+  const clickLikeAUser = (el) => {
+    const opts = { bubbles: true, cancelable: true, view: window, button: 0 };
+    el.dispatchEvent(new window.PointerEvent('pointerdown', opts));
+    el.dispatchEvent(new window.MouseEvent('mousedown', opts));
+    el.dispatchEvent(new window.PointerEvent('pointerup', opts));
+    el.dispatchEvent(new window.MouseEvent('mouseup', opts));
+    el.dispatchEvent(new window.MouseEvent('click', opts));
+  };
+
+  /** @returns {boolean} whether the rail icon was found and clicked */
   const openPalette = () => {
-    const button = [...document.querySelectorAll('button, a, [role="button"]')].find((el) => {
-      const label = el.getAttribute('aria-label') || '';
-      return /search/i.test(label) && !/clear/i.test(label);
-    });
-    if (button) {
-      button.click();
-      return;
+    const icon = document.querySelector(RAIL_SEARCH_ICON_SELECTOR);
+    const target =
+      icon?.closest('button, a, [role="button"], [tabindex], .group') ??
+      icon?.parentElement?.closest('div, span');
+    if (target) {
+      clickLikeAUser(target);
+      return true;
     }
+    return false;
+  };
+
+  const pressShortcut = () => {
     for (const mod of [{ metaKey: true }, { ctrlKey: true }]) {
       document.dispatchEvent(
         new window.KeyboardEvent('keydown', { key: 'k', code: 'KeyK', bubbles: true, ...mod }),
@@ -48,14 +67,21 @@ if (!window.__cogisMuseSearchInstalled) {
 
   const waitForInput = async (budgetMs) => {
     const start = Date.now();
-    let opened = false;
+    let lastClick = 0;
+    let clicks = 0;
+    let shortcutTried = false;
     while (Date.now() - start < budgetMs) {
       const input = findInput();
       if (input) return input;
-      // Give the app a moment to hydrate before poking it.
-      if (!opened && Date.now() - start > 600) {
-        openPalette();
-        opened = true;
+      const now = Date.now();
+      // The rail renders once the app hydrates; click as soon as it's there,
+      // and once more if the first click landed before handlers attached.
+      if (clicks < 2 && now - lastClick > 1200 && openPalette()) {
+        lastClick = now;
+        clicks += 1;
+      } else if (!shortcutTried && clicks === 0 && now - start > 2500) {
+        pressShortcut();
+        shortcutTried = true;
       }
       await sleep(150);
     }
@@ -111,6 +137,8 @@ if (!window.__cogisMuseSearchInstalled) {
         if (!input) {
           if (looksLoggedOut()) {
             sendResponse({ status: 'login_required' });
+          } else if (!document.querySelector(RAIL_SEARCH_ICON_SELECTOR)) {
+            sendResponse({ status: 'error', message: 'Muse search button not found.' });
           } else {
             sendResponse({ status: 'error', message: 'Muse search box did not open.' });
           }

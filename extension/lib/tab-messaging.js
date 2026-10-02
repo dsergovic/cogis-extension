@@ -55,9 +55,11 @@ export function sendMessageToTab(tabId, message) {
  * minimized) so there's no on-screen flash or focus flicker — a minimized
  * window is briefly shown at normal position before Chrome collapses it.
  * @param {string} url
+ * @param {{ width?: number, height?: number }} [size] defaults to 400x300;
+ *   a lab whose layout collapses at small widths can ask for more.
  * @returns {Promise<{ tabId: number, windowId: number }>}
  */
-export async function createHiddenTab(url) {
+export async function createHiddenTab(url, { width = 400, height = 300 } = {}) {
   let win;
   try {
     win = await chrome.windows.create({
@@ -66,8 +68,8 @@ export async function createHiddenTab(url) {
       focused: false,
       left: -32000,
       top: -32000,
-      width: 400,
-      height: 300,
+      width,
+      height,
     });
   } catch {
     // Chrome can reject bounds that aren't mostly on a visible display
