@@ -18,14 +18,14 @@ See [`NOTICE`](./NOTICE) for the full privacy/ToS posture.
 
 Early rebuild. See [Issues](https://github.com/dsergovic/cogis/issues) for what's tracked. Labs land one at a time, each verified against its live, logged-in contract before the adapter is written — no lab ships from guesswork.
 
-| Lab        | Status                          | Capability |
-| ---------- | ------------------------------- | ---------- |
-| ChatGPT    | Done                            | full-text  |
-| Claude     | Done                            | full-text  |
-| Gemini     | Done                            | full-text  |
-| Perplexity | Done                            | full-text  |
-| Grok (web) | Done                            | full-text  |
-| Muse       | Built, awaiting live smoke test | full-text  |
+| Lab        | Status | Capability |
+| ---------- | ------ | ---------- |
+| ChatGPT    | Done   | full-text  |
+| Claude     | Done   | full-text  |
+| Gemini     | Done   | full-text  |
+| Perplexity | Done   | full-text  |
+| Grok (web) | Done   | full-text  |
+| Muse       | Done   | full-text  |
 
 **Full-text means the lab's own search, not ours.** ChatGPT, Claude,
 Perplexity, Gemini, and Grok all run genuine search over message bodies,
