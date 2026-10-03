@@ -102,15 +102,6 @@ describe('openHiddenSearchTab', () => {
     return import('../../extension/lib/tab-messaging.js');
   }
 
-  it('shows a foreground tab in the shared window', async () => {
-    const { openHiddenSearchTab } = await load();
-    await Promise.all([
-      openHiddenSearchTab('https://www.perplexity.ai/'),
-      openHiddenSearchTab('https://muse.ai/', { foreground: true }),
-    ]);
-    expect(chrome.tabs.create.mock.calls[0][0]).toMatchObject({ windowId: 9, active: true });
-  });
-
   it('shares one window across concurrent labs and closes it after the last release', async () => {
     const { openHiddenSearchTab } = await load();
     const opened = await Promise.all([

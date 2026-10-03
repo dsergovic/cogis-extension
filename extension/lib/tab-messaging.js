@@ -166,13 +166,9 @@ globalThis.chrome?.windows?.onRemoved?.addListener((windowId) => {
  * Open `url` in a tab of the shared hidden window, creating the window if
  * none is open. Call the returned `release` when done with the tab, always.
  * @param {string} url
- * @param {{ foreground?: boolean }} [options] `foreground` makes this the
- *   window's showing tab. A background tab's page is hidden, so Chrome stops
- *   its animation frames, and Muse's search palette never opens without
- *   them. The window itself stays unfocused, so the user's window keeps focus.
  * @returns {Promise<{ tabId: number, release: () => void }>}
  */
-export async function openHiddenSearchTab(url, { foreground = false } = {}) {
+export async function openHiddenSearchTab(url) {
   shared.users += 1;
   let released = false;
   const release = (tabId) => () => {
@@ -203,7 +199,7 @@ export async function openHiddenSearchTab(url, { foreground = false } = {}) {
     }
 
     const windowId = await shared.ready;
-    const tab = await chrome.tabs.create({ windowId, url, active: foreground });
+    const tab = await chrome.tabs.create({ windowId, url, active: false });
     if (typeof tab.id !== 'number') throw new Error('Could not open a hidden tab.');
     return { tabId: tab.id, release: release(tab.id) };
   } catch (err) {

@@ -215,7 +215,7 @@ export async function searchMuse(query, signal) {
   let tabId;
   let release = () => {};
   try {
-    const hidden = await retryOnce(() => openHiddenSearchTab(`${ORIGIN}/`, { foreground: true }));
+    const hidden = await retryOnce(() => openHiddenSearchTab(`${ORIGIN}/`));
     tabId = hidden.tabId;
     release = hidden.release;
     await waitForTabComplete(tabId, TAB_COMPLETE_MS);
