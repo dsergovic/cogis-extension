@@ -37,6 +37,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Quote characters are stripped from the string sent to each lab, and a
   quoted search now highlights the phrase itself on arrival via text fragment.
 ### Fixed
+- Muse failing with "Muse search box did not open." after it moved into the
+  shared hidden window. Muse opens its own hidden window again, the setup
+  that last worked live; Perplexity and Gemini still share one.
 - Quoted searches no longer list Grok chats that hold only some of the
   phrase's words. Grok matches each word on its own and reports which ones it
   found, so a hit missing any phrase word is dropped instead of shown as
