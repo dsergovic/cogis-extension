@@ -55,7 +55,12 @@
  */
 
 import { anyDateToIso, stripForbiddenFields, pointerHasForbiddenFields } from './results.js';
-import { PLATFORM_TIMEOUT_MS, TAB_COMPLETE_MS, MAX_RESULTS_PER_PLATFORM } from './timeouts.js';
+import {
+  PLATFORM_TIMEOUT_MS,
+  TAB_COMPLETE_MS,
+  MAX_RESULTS_PER_PLATFORM,
+  rejectOnAbort,
+} from './timeouts.js';
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
@@ -81,6 +86,7 @@ export function perplexityDeepLink(threadSlug) {
 
 /**
  * @param {string} query
+ * @param {AbortSignal} [signal] aborts the search (and closes its window) when the request is superseded or cancelled
  * @returns {string}
  */
 export function perplexityPrefillUrl(query) {
@@ -146,7 +152,7 @@ async function ensurePerplexityTab() {
  * @param {string} query
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
-export async function searchPerplexity(query) {
+export async function searchPerplexity(query, signal) {
   let tabInfo;
   try {
     tabInfo = await ensurePerplexityTab();
@@ -172,6 +178,7 @@ export async function searchPerplexity(query) {
         'content/perplexity.js',
       ),
       timeout,
+      rejectOnAbort(signal),
     ]);
 
     if (!response) {
@@ -203,7 +210,7 @@ export async function searchPerplexity(query) {
 
     return { status: pointers.length ? 'ready' : 'empty', results: pointers };
   } catch (err) {
-    if (err?.code === 'timeout') return { status: 'timeout' };
+    if (err?.code === 'timeout' || err?.code === 'cancelled') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Perplexity tab.' };
   } finally {
     if (tabInfo.created) {

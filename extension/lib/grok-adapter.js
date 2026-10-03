@@ -107,11 +107,13 @@ export function normalizeGrokHit(raw) {
  * Run a Grok search. Returns a result descriptor the service worker turns
  * into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
+ * @param {AbortSignal} [signal] aborts the search when the request is superseded or cancelled
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
-export async function searchGrok(query) {
+export async function searchGrok(query, signal) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PLATFORM_TIMEOUT_MS);
+  signal?.addEventListener('abort', () => controller.abort(), { once: true });
 
   try {
     let res;

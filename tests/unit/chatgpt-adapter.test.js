@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { chatgptDeepLink, normalizeChatgptHit } from '../../extension/lib/chatgpt-adapter.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import {
+  chatgptDeepLink,
+  normalizeChatgptHit,
+  searchChatgpt,
+} from '../../extension/lib/chatgpt-adapter.js';
 
 describe('chatgptDeepLink', () => {
   it('builds a /c/{id} url', () => {
@@ -56,5 +60,29 @@ describe('normalizeChatgptHit', () => {
 
   it('returns null for non-object input', () => {
     expect(normalizeChatgptHit(null)).toBeNull();
+  });
+});
+
+describe('searchChatgpt session mapping', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it('treats a non-401 session failure as an outage, not a sign-out', async () => {
+    globalThis.fetch = vi.fn(async () => new Response('', { status: 503 }));
+    const outcome = await searchChatgpt('anything');
+    expect(outcome.status).toBe('unavailable');
+    expect(outcome.message).toContain('503');
+  });
+
+  it('treats a 401 session response as logged out', async () => {
+    globalThis.fetch = vi.fn(async () => new Response('', { status: 401 }));
+    expect((await searchChatgpt('anything')).status).toBe('login_required');
+  });
+
+  it('treats a session without an access token as logged out', async () => {
+    globalThis.fetch = vi.fn(async () => Response.json({}));
+    expect((await searchChatgpt('anything')).status).toBe('login_required');
   });
 });
