@@ -25,6 +25,7 @@ Early rebuild. See [Issues](https://github.com/dsergovic/cogis/issues) for what'
 | Gemini     | Done   | full-text  |
 | Perplexity | Done   | full-text  |
 | Grok (web) | Done   | full-text  |
+| Muse       | Done   | full-text  |
 
 **Full-text means the lab's own search, not ours.** ChatGPT, Claude,
 Perplexity, Gemini, and Grok all run genuine search over message bodies,

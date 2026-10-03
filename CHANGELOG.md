@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 ### Added
+- Muse (muse.ai) adapter, tab-driven like Gemini. muse.ai searches over a
+  WebSocket to a per-account VM with a session-bound token, so Cogis drives
+  the site's own search palette in a hidden tab and reads only room titles,
+  dates and thread links. Contract captured and smoke-tested live 2026-10-02.
 - Quoted-phrase search (`"exact phrase"`). Enforced by Cogis: all three
   API-driven labs were verified live to ignore quote syntax and return
   identical results quoted or not. A phrase is verified against conversation
@@ -20,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   static page: what Cogis does, the five supported labs, search tips, the
   privacy rules, and install steps linking to GitHub.
 ### Changed
+- Perplexity, Gemini and Muse now share one hidden window per search (a
+  background tab each) instead of opening a window apiece. Since Chrome 152
+  that window can't be off-screen and shows briefly minimized, so this cuts
+  three taskbar flashes to one.
 - Search results are now filtered on the match metadata each lab already
   returns — Grok's matched words, Claude's title ranges and semantic
   distance, ChatGPT's match kind — dropping results that matched only a

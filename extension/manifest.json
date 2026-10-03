@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cogis — AI Search",
   "version": "0.1.0",
-  "description": "Search your own ChatGPT, Claude, Gemini, Perplexity, and Grok conversation history from a single popup and jump straight back in. Dev-unpacked.",
+  "description": "Search your own ChatGPT, Claude, Gemini, Perplexity, Grok, and Muse conversation history from a single popup and jump straight back in. Dev-unpacked.",
   "action": {
     "default_title": "Cogis — AI Search",
     "default_icon": {
@@ -29,7 +29,8 @@
     "https://www.perplexity.ai/*",
     "https://perplexity.ai/*",
     "https://gemini.google.com/*",
-    "https://grok.com/*"
+    "https://grok.com/*",
+    "https://muse.ai/*"
   ],
   "content_scripts": [
     {
@@ -40,6 +41,11 @@
     {
       "matches": ["https://gemini.google.com/*"],
       "js": ["content/gemini.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://muse.ai/*"],
+      "js": ["content/muse.js"],
       "run_at": "document_idle"
     }
   ]

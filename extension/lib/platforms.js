@@ -56,10 +56,18 @@ export const PLATFORMS = {
     loginUrl: 'https://grok.com/',
     hostPatterns: ['https://grok.com/*'],
   },
+  muse: {
+    id: 'muse',
+    label: 'Muse',
+    capability: 'full-text',
+    origin: 'https://muse.ai',
+    loginUrl: 'https://muse.ai/',
+    hostPatterns: ['https://muse.ai/*'],
+  },
 };
 
 /** UI group order for implemented platforms, filled in as adapters land. */
-export const PLATFORM_ORDER = ['chatgpt', 'claude', 'perplexity', 'gemini', 'grok'];
+export const PLATFORM_ORDER = ['chatgpt', 'claude', 'perplexity', 'gemini', 'grok', 'muse'];
 
 export const FOOTNOTE_TEXT = 'Some AIs do not support full-text search.';
 

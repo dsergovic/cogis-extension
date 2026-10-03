@@ -42,9 +42,9 @@
  *
  * Because this always has to navigate a tab to /search and simulate typing
  * — visibly, if done in a tab the user is looking at — this adapter always
- * opens its own tab inside a new, off-screen background window (so it never
- * appears in the user's tab strip) rather than adopting one of the user's
- * open Gemini tabs, and always closes that window afterward. Opening it is
+ * opens its own tab in the shared hidden window (tab-messaging.js, so it
+ * never appears in the user's tab strip) rather than adopting one of the
+ * user's open Gemini tabs, and always releases that tab afterward. Opening it is
  * retried once on failure — occasionally transient under normal browser
  * load, not usually a sign Gemini itself is unreachable.
  *
@@ -63,8 +63,7 @@ import {
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
-  createHiddenTab,
-  closeHiddenWindow,
+  openHiddenSearchTab,
   openTabFailureMessage,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
@@ -171,11 +170,11 @@ export function normalizeGeminiHit(raw) {
  */
 export async function searchGemini(query, signal) {
   let tabId;
-  let windowId;
+  let release = () => {};
   try {
-    const hidden = await retryOnce(() => createHiddenTab(`${ORIGIN}/search`));
+    const hidden = await retryOnce(() => openHiddenSearchTab(`${ORIGIN}/search`));
     tabId = hidden.tabId;
-    windowId = hidden.windowId;
+    release = hidden.release;
     await waitForTabComplete(tabId, TAB_COMPLETE_MS);
   } catch (err) {
     // Surface Chrome's own reason — this used to be swallowed, which left
@@ -226,6 +225,6 @@ export async function searchGemini(query, signal) {
     if (err?.code === 'timeout' || err?.code === 'cancelled') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Gemini tab.' };
   } finally {
-    closeHiddenWindow(windowId);
+    release();
   }
 }

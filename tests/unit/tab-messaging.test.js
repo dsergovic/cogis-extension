@@ -83,3 +83,62 @@ describe('openTabFailureMessage', () => {
     );
   });
 });
+
+describe('openHiddenSearchTab', () => {
+  async function load() {
+    vi.resetModules();
+    let nextTab = 100;
+    globalThis.chrome = {
+      windows: {
+        create: vi.fn(async () => ({ id: 9, tabs: [{ id: nextTab++ }] })),
+        remove: vi.fn(() => Promise.resolve()),
+        onRemoved: { addListener: () => {} },
+      },
+      tabs: {
+        create: vi.fn(async () => ({ id: nextTab++ })),
+        remove: vi.fn(() => Promise.resolve()),
+      },
+    };
+    return import('../../extension/lib/tab-messaging.js');
+  }
+
+  it('shares one window across concurrent labs and closes it after the last release', async () => {
+    const { openHiddenSearchTab } = await load();
+    const opened = await Promise.all([
+      openHiddenSearchTab('https://www.perplexity.ai/'),
+      openHiddenSearchTab('https://gemini.google.com/search'),
+      openHiddenSearchTab('https://muse.ai/'),
+    ]);
+
+    expect(chrome.windows.create).toHaveBeenCalledTimes(1);
+    expect(chrome.tabs.create).toHaveBeenCalledTimes(2);
+    expect(chrome.tabs.create.mock.calls[0][0]).toMatchObject({ windowId: 9, active: false });
+    expect(new Set(opened.map((o) => o.tabId)).size).toBe(3);
+
+    opened[0].release();
+    opened[1].release();
+    expect(chrome.tabs.remove).toHaveBeenCalledTimes(2);
+    expect(chrome.windows.remove).not.toHaveBeenCalled();
+
+    opened[2].release();
+    opened[2].release(); // a second release is a no-op
+    expect(chrome.windows.remove).toHaveBeenCalledTimes(1);
+    expect(chrome.windows.remove).toHaveBeenCalledWith(9);
+  });
+
+  it('opens a fresh window for the next search after the last release', async () => {
+    const { openHiddenSearchTab } = await load();
+    (await openHiddenSearchTab('https://muse.ai/')).release();
+    await openHiddenSearchTab('https://muse.ai/');
+    expect(chrome.windows.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers after a failed window create', async () => {
+    const { openHiddenSearchTab } = await load();
+    chrome.windows.create
+      .mockRejectedValueOnce(new Error('nope'))
+      .mockRejectedValueOnce(new Error('nope'));
+    await expect(openHiddenSearchTab('https://muse.ai/')).rejects.toThrow();
+    await expect(openHiddenSearchTab('https://muse.ai/')).resolves.toMatchObject({ tabId: 100 });
+  });
+});
