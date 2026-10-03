@@ -39,9 +39,9 @@
  *
  * The palette opens from the left rail's magnifier, a div with no label
  * wrapping `[data-hatch-system-lottie-poster="SystemSearch"]` (captured
- * 2026-10-02). It's only in the desktop layout, which is why the shared
- * hidden window (tab-messaging.js) is desktop-sized. Still unverified live: that the main chat's address
- * is the site root.
+ * 2026-10-02). It's only in the desktop layout, which is why Muse's own
+ * hidden window uses the desktop-sized SHARED_WINDOW_SIZE. Still unverified
+ * live: that the main chat's address is the site root.
  *
  * Auth mapping: the content script reports `login_required` when the
  * palette never opens and the page looks logged out; otherwise a missing
@@ -59,8 +59,10 @@ import {
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
-  openHiddenSearchTab,
+  createHiddenTab,
+  closeHiddenWindow,
   openTabFailureMessage,
+  SHARED_WINDOW_SIZE,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
 
@@ -215,9 +217,13 @@ export async function searchMuse(query, signal) {
   let tabId;
   let release = () => {};
   try {
-    const hidden = await retryOnce(() => openHiddenSearchTab(`${ORIGIN}/`));
+    // Muse gets a window of its own rather than a tab in the shared one: as a
+    // background tab there, its search palette never opened ("Muse search box
+    // did not open."), and making that tab the showing one pulled windows
+    // into view. Its own window is the setup that worked live (2026-10-02).
+    const hidden = await retryOnce(() => createHiddenTab(`${ORIGIN}/`, SHARED_WINDOW_SIZE));
     tabId = hidden.tabId;
-    release = hidden.release;
+    release = () => closeHiddenWindow(hidden.windowId);
     await waitForTabComplete(tabId, TAB_COMPLETE_MS);
   } catch (err) {
     return { status: 'unavailable', message: openTabFailureMessage('Muse', err) };
