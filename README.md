@@ -2,6 +2,8 @@
 
 A single-purpose Chrome extension that searches **your own** conversation history across AI labs and jumps you straight back into the original chat. A launcher, not a knowledge base.
 
+Site: [cogis.ai](https://cogis.ai)
+
 ## The rules (non-negotiable)
 
 - **No caching.** Every search re-hits every lab, live. Type the same query twice, it searches twice.
@@ -23,6 +25,7 @@ Early rebuild. See [Issues](https://github.com/dsergovic/cogis/issues) for what'
 | Gemini     | Done   | full-text  |
 | Perplexity | Done   | full-text  |
 | Grok (web) | Done   | full-text  |
+| Muse       | Done   | full-text  |
 
 **Full-text means the lab's own search, not ours.** ChatGPT, Claude,
 Perplexity, Gemini, and Grok all run genuine search over message bodies,
@@ -93,6 +96,10 @@ npm run format:check
 ```
 
 DevDependencies only (ESLint 9, Prettier 3, Vitest 3). Runtime is plain HTML/CSS/JS — no bundler, no framework.
+
+## Site
+
+[cogis.ai](https://cogis.ai) is a static landing page in [`web/`](./web) — plain HTML and CSS, no scripts, no build step. [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes it to GitHub Pages on pushes to `dev` that touch `web/` (the `github-pages` environment only allows `dev`). It describes the extension; it doesn't search. The older search-in-the-page surface was retired in the 2026-08-21 restart.
 
 ## CI
 

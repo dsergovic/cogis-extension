@@ -71,3 +71,23 @@ export function createRequestTracker() {
     },
   };
 }
+
+/**
+ * A promise that never resolves and rejects (with `code: 'cancelled'`) once
+ * `signal` aborts — for racing tab-driven searches against a superseded or
+ * cancelled request. Never settles when no signal is given.
+ * @param {AbortSignal|undefined} signal
+ * @returns {Promise<never>}
+ */
+export function rejectOnAbort(signal) {
+  return new Promise((_, reject) => {
+    if (!signal) return;
+    const fail = () => {
+      const err = new Error('Search cancelled');
+      err.code = 'cancelled';
+      reject(err);
+    };
+    if (signal.aborted) fail();
+    else signal.addEventListener('abort', fail, { once: true });
+  });
+}

@@ -42,9 +42,9 @@
  *
  * Because this always has to navigate a tab to /search and simulate typing
  * — visibly, if done in a tab the user is looking at — this adapter always
- * opens its own tab inside a new, off-screen background window (so it never
- * appears in the user's tab strip) rather than adopting one of the user's
- * open Gemini tabs, and always closes that window afterward. Opening it is
+ * opens its own tab in the shared hidden window (tab-messaging.js, so it
+ * never appears in the user's tab strip) rather than adopting one of the
+ * user's open Gemini tabs, and always releases that tab afterward. Opening it is
  * retried once on failure — occasionally transient under normal browser
  * load, not usually a sign Gemini itself is unreachable.
  *
@@ -54,12 +54,17 @@
  */
 
 import { stripForbiddenFields, pointerHasForbiddenFields } from './results.js';
-import { PLATFORM_TIMEOUT_MS, TAB_COMPLETE_MS, MAX_RESULTS_PER_PLATFORM } from './timeouts.js';
+import {
+  PLATFORM_TIMEOUT_MS,
+  TAB_COMPLETE_MS,
+  MAX_RESULTS_PER_PLATFORM,
+  rejectOnAbort,
+} from './timeouts.js';
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
-  createHiddenTab,
-  closeHiddenWindow,
+  openHiddenSearchTab,
+  openTabFailureMessage,
 } from './tab-messaging.js';
 import { retryOnce } from './retry.js';
 
@@ -160,18 +165,21 @@ export function normalizeGeminiHit(raw) {
  * Run a Gemini search. Returns a result descriptor the service worker turns
  * into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
+ * @param {AbortSignal} [signal] aborts the search (and closes its window) when the request is superseded or cancelled
  * @returns {Promise<{ status: import('./messaging.js').GroupStatus, results?: import('./messaging.js').PointerRecord[], message?: string, loginUrl?: string }>}
  */
-export async function searchGemini(query) {
+export async function searchGemini(query, signal) {
   let tabId;
-  let windowId;
+  let release = () => {};
   try {
-    const hidden = await retryOnce(() => createHiddenTab(`${ORIGIN}/search`));
+    const hidden = await retryOnce(() => openHiddenSearchTab(`${ORIGIN}/search`));
     tabId = hidden.tabId;
-    windowId = hidden.windowId;
+    release = hidden.release;
     await waitForTabComplete(tabId, TAB_COMPLETE_MS);
-  } catch {
-    return { status: 'unavailable', message: 'Could not open a Gemini tab.' };
+  } catch (err) {
+    // Surface Chrome's own reason — this used to be swallowed, which left
+    // a tab-open failure undiagnosable from the popup.
+    return { status: 'unavailable', message: openTabFailureMessage('Gemini', err) };
   }
 
   const timeout = new Promise((_, reject) => {
@@ -186,6 +194,7 @@ export async function searchGemini(query) {
     const response = await Promise.race([
       sendMessageWithInjectRetry(tabId, { type: GEMINI_TAB_SEARCH, query }, 'content/gemini.js'),
       timeout,
+      rejectOnAbort(signal),
     ]);
 
     if (!response) {
@@ -213,9 +222,9 @@ export async function searchGemini(query) {
 
     return { status: pointers.length ? 'ready' : 'empty', results: pointers };
   } catch (err) {
-    if (err?.code === 'timeout') return { status: 'timeout' };
+    if (err?.code === 'timeout' || err?.code === 'cancelled') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Gemini tab.' };
   } finally {
-    closeHiddenWindow(windowId);
+    release();
   }
 }

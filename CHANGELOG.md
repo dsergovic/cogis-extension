@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 ### Added
+- Muse (muse.ai) adapter, tab-driven like Gemini. muse.ai searches over a
+  WebSocket to a per-account VM with a session-bound token, so Cogis drives
+  the site's own search palette in a hidden tab and reads only room titles,
+  dates and thread links. Contract captured and smoke-tested live 2026-10-02.
 - Quoted-phrase search (`"exact phrase"`). Enforced by Cogis: all three
   API-driven labs were verified live to ignore quote syntax and return
   identical results quoted or not. A phrase is verified against conversation
@@ -13,7 +17,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   are shown under a collapsed "Unverified matches" group rather than dropped.
 - `lib/query.js` (phrase/term parsing, stopwords) and `lib/relevance.js`
   (match-evidence scoring), with unit coverage built from live payload shapes.
+- `cogis.ai` landing page (`web/`) and its GitHub Pages workflow. The site
+  had been frozen since 2026-08-01 as the old in-page search surface, whose
+  extension-side bridge was removed in the 2026-08-21 restart, so it told
+  every visitor to install an extension they may already have. It is now a
+  static page: what Cogis does, the five supported labs, search tips, the
+  privacy rules, and install steps linking to GitHub.
 ### Changed
+- Perplexity, Gemini and Muse now share one hidden window per search (a
+  background tab each) instead of opening a window apiece. Since Chrome 152
+  that window can't be off-screen and shows briefly minimized, so this cuts
+  three taskbar flashes to one.
 - Search results are now filtered on the match metadata each lab already
   returns — Grok's matched words, Claude's title ranges and semantic
   distance, ChatGPT's match kind — dropping results that matched only a
@@ -22,6 +36,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   that actually contain "github".
 - Quote characters are stripped from the string sent to each lab, and a
   quoted search now highlights the phrase itself on arrival via text fragment.
+### Fixed
+- Quoted searches no longer list Grok chats that hold only some of the
+  phrase's words. Grok matches each word on its own and reports which ones it
+  found, so a hit missing any phrase word is dropped instead of shown as
+  unverified.
+- Perplexity and Gemini failing with "Could not open a … tab". Their hidden
+  search window is created fully off-screen, which Chrome can reject; this
+  began after the 2026-09-10 update to Chrome 152. A rejected off-screen
+  create now falls back to a minimized window, and the popup shows Chrome's
+  own error text instead of swallowing it.
 ### Notes
 - No change to the privacy model: scoring uses match metadata only, never
   message bodies, and the metadata is stripped before results reach the UI.

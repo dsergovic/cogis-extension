@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Static page, no scripts at all. `frame-ancestors` is deliberately
+         absent: browsers ignore it in a <meta> CSP, and the old site logged a
+         console error every load for including it. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <title>Cogis — search your AI chat history</title>
+    <meta
+      name="description"
+      content="A Chrome extension that searches your own ChatGPT, Claude, Gemini, Perplexity and Grok conversation history from one box, and takes you straight back into the original chat."
+    />
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
+    <link rel="icon" type="image/png" sizes="128x128" href="icon-128.png" />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <h1 class="wordmark">Cogis</h1>
+      <p class="tagline">
+        Search your own AI conversation history — ChatGPT, Claude, Gemini, Perplexity and Grok —
+        from one box, and jump straight back into the original chat.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://github.com/dsergovic/cogis#load-unpacked"
+          >Install from GitHub</a
+        >
+        <a class="btn" href="https://github.com/dsergovic/cogis">View the source</a>
+      </div>
+      <p class="fineprint">
+        A Chrome extension. Free and open source. Not on the Chrome Web Store yet.
+      </p>
+    </header>
+
+    <main>
+      <section aria-labelledby="how">
+        <h2 id="how">How it works</h2>
+        <ol class="steps">
+          <li>
+            <strong>Stay signed in</strong> to the AI assistants you use, in the same Chrome
+            profile. Cogis uses the sessions you already have — no accounts, no API keys.
+          </li>
+          <li>
+            <strong>Click the Cogis icon</strong> in your toolbar. A search window opens, centered
+            over the page you're on.
+          </li>
+          <li>
+            <strong>Type and press Enter.</strong> Each assistant is searched live, in parallel.
+            Results come back grouped by assistant, and every one is a link into the original
+            conversation.
+          </li>
+        </ol>
+        <p class="aside">
+          It's a launcher, not a knowledge base: you get a title, a date and a link — never a copy
+          of the conversation.
+        </p>
+      </section>
+
+      <section aria-labelledby="labs">
+        <h2 id="labs">Five assistants, one search</h2>
+        <ul class="labs">
+          <li>ChatGPT</li>
+          <li>Claude</li>
+          <li>Gemini</li>
+          <li>Perplexity</li>
+          <li>Grok</li>
+        </ul>
+        <p>
+          All five are searched full-text, so a result can match on something said inside a
+          conversation, not just its title. You can switch any of them off in Settings.
+        </p>
+      </section>
+
+      <section aria-labelledby="tips">
+        <h2 id="tips">Sharper searches</h2>
+        <dl class="tips">
+          <dt><code>"exact phrase"</code></dt>
+          <dd>
+            Put a phrase in quotes to match it exactly. None of the assistants' own searches honor
+            quotes, so Cogis checks the phrase itself. Matches it can't confirm are kept but tucked
+            under <em>Unverified matches</em>.
+          </dd>
+          <dt>Filler words don't count on their own</dt>
+          <dd>
+            Words like <em>vs</em>, <em>the</em> and <em>for</em> can't carry a match by themselves,
+            so <code>devops vs github</code> won't turn up every chat that happens to compare two
+            other things.
+          </dd>
+        </dl>
+      </section>
+
+      <section aria-labelledby="privacy">
+        <h2 id="privacy">Private by design</h2>
+        <ul class="rules">
+          <li>
+            <strong>No server.</strong> Cogis has no backend. Your query goes only to the assistants
+            you already use, from your own browser.
+          </li>
+          <li>
+            <strong>Nothing stored.</strong> No caching and no search history — every search runs
+            fresh, and nothing about it is written anywhere.
+          </li>
+          <li>
+            <strong>No conversation content.</strong> Only a title, a date and a link ever reach
+            your results. Message bodies are never stored, indexed or shown.
+          </li>
+          <li><strong>No tracking.</strong> No analytics, no telemetry, no phoning home.</li>
+          <li>
+            <strong>No credentials.</strong> It never asks for a password or key, and never stores a
+            session.
+          </li>
+        </ul>
+        <p>
+          The full privacy and terms-of-service posture is in
+          <a href="https://github.com/dsergovic/cogis/blob/main/NOTICE">NOTICE</a>.
+        </p>
+      </section>
+
+      <section aria-labelledby="install">
+        <h2 id="install">Install</h2>
+        <p>
+          Until Cogis is on the Chrome Web Store, load it as an unpacked extension. It takes about a
+          minute:
+        </p>
+        <ol class="steps steps-compact">
+          <li>
+            Download or clone
+            <a href="https://github.com/dsergovic/cogis">the repository</a>.
+          </li>
+          <li>
+            Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.
+          </li>
+          <li>
+            Click <strong>Load unpacked</strong> and choose the <code>extension</code> folder.
+          </li>
+          <li>Pin <strong>Cogis — AI Search</strong> to your toolbar and click it.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        <a href="https://github.com/dsergovic/cogis">Source on GitHub</a> ·
+        <a href="https://github.com/dsergovic/cogis/blob/main/LICENSE">MIT license</a>
+      </p>
+      <p class="disclaimer">
+        Cogis is an independent project and is not affiliated with OpenAI, Anthropic, Google,
+        Perplexity AI, or xAI.
+      </p>
+    </footer>
+  </body>
+</html>

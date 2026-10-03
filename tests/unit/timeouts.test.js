@@ -3,6 +3,7 @@ import {
   withTimeout,
   createRequestTracker,
   OVERALL_WALL_MS,
+  rejectOnAbort,
 } from '../../extension/lib/timeouts.js';
 
 describe('withTimeout', () => {
@@ -63,5 +64,20 @@ describe('createRequestTracker', () => {
 describe('budget constants', () => {
   it('keeps the popup watchdog after the overall wall', () => {
     expect(OVERALL_WALL_MS).toBeGreaterThan(0);
+  });
+});
+
+describe('rejectOnAbort', () => {
+  it('rejects with code "cancelled" when the signal aborts', async () => {
+    const controller = new AbortController();
+    const pending = rejectOnAbort(controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ code: 'cancelled' });
+  });
+
+  it('rejects immediately for an already-aborted signal', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(rejectOnAbort(controller.signal)).rejects.toMatchObject({ code: 'cancelled' });
   });
 });

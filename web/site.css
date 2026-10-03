@@ -1,0 +1,269 @@
+/* Same type, palette and wordmark as the extension popup (extension/popup/popup.css),
+   so the site and the thing it describes read as one product. */
+:root {
+  color-scheme: light dark;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  --fg: #202124;
+  --fg-muted: #5f6368;
+  --border: #dfe1e5;
+  --bg: #ffffff;
+  --bg-raised: #f8f9fa;
+  --accent: #1a73e8;
+  --accent-fg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e8eaed;
+    --fg-muted: #9aa0a6;
+    --border: #5f6368;
+    --bg: #202124;
+    --bg-raised: #292a2d;
+    --accent: #8ab4f8;
+    --accent-fg: #202124;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration: underline;
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+/* ---- Hero ---- */
+
+.hero {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 96px 24px 56px;
+  text-align: center;
+}
+
+.wordmark {
+  margin: 0;
+  font-size: 64px;
+  font-weight: 500;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+}
+
+.tagline {
+  margin: 20px auto 0;
+  max-width: 34em;
+  font-size: 19px;
+  color: var(--fg-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 22px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  text-decoration: none;
+  border-color: var(--fg-muted);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  border-color: var(--accent);
+  filter: brightness(1.08);
+}
+
+.fineprint {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+/* ---- Sections ---- */
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+section {
+  padding: 40px 0;
+  border-top: 1px solid var(--border);
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+p {
+  margin: 12px 0 0;
+}
+
+.aside {
+  color: var(--fg-muted);
+}
+
+.steps {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+p + .steps {
+  margin-top: 12px;
+}
+
+.steps li + li {
+  margin-top: 10px;
+}
+
+.steps-compact li + li {
+  margin-top: 4px;
+}
+
+.labs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.labs li {
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-raised);
+  font-size: 15px;
+}
+
+.tips {
+  margin: 0;
+}
+
+.tips dt {
+  font-weight: 500;
+}
+
+.tips dd {
+  margin: 4px 0 0;
+  color: var(--fg-muted);
+}
+
+.tips dd + dt {
+  margin-top: 20px;
+}
+
+.rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rules li {
+  padding-left: 1.4em;
+  position: relative;
+}
+
+.rules li + li {
+  margin-top: 10px;
+}
+
+.rules li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* ---- Footer ---- */
+
+.footer {
+  max-width: 720px;
+  margin: 24px auto 0;
+  padding: 32px 24px 48px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 14px;
+  color: var(--fg-muted);
+}
+
+.footer p {
+  margin: 4px 0 0;
+}
+
+.disclaimer {
+  font-size: 12px;
+}
+
+/* ---- 404 ---- */
+
+.notfound {
+  padding-bottom: 96px;
+}
+
+@media (max-width: 560px) {
+  .hero {
+    padding-top: 64px;
+  }
+
+  .wordmark {
+    font-size: 48px;
+  }
+
+  .tagline {
+    font-size: 17px;
+  }
+}

@@ -1,0 +1,62 @@
+# Publishes the `web/` subtree — the cogis.ai landing page — to GitHub Pages.
+#
+# Restored from 3d49777 (deleted with the rest of the old web surface in the
+# 2026-08-21 lean-V1 restart). Without it, Pages kept serving the last build
+# from 2026-08-01: a search front end whose extension-side bridge no longer
+# exists, so it sat at "Checking for Cogis extension…" forever.
+#
+# Runs on `dev` because the `github-pages` environment's deployment branch
+# policy only allows `dev`. Moving deploys to `main` means changing that
+# policy in repo settings as well as the branch list below.
+#
+# The site is plain static HTML/CSS with no build step. Only `web/` is
+# uploaded; extension source, docs and tests never reach Pages.
+name: Pages
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'web/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# One concurrent Pages deploy at a time; a newer run cancels an in-flight one
+# so a quick series of `web/` edits doesn't queue stale deploys.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+# Least-privilege token: only what Pages upload/deploy needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload web/ as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -8,14 +8,23 @@ import { searchClaude } from '../lib/claude-adapter.js';
 import { searchPerplexity } from '../lib/perplexity-adapter.js';
 import { searchGemini } from '../lib/gemini-adapter.js';
 import { searchGrok } from '../lib/grok-adapter.js';
+import { searchMuse } from '../lib/muse-adapter.js';
 
 const tracker = createRequestTracker();
 
 const POPUP_WIDTH = 640;
 const POPUP_HEIGHT = 700;
 
-/** Id of the currently open popup window, if any — so a second icon click focuses it instead of opening a duplicate. */
-let popupWindowId = null;
+const POPUP_URL = chrome.runtime.getURL('popup/popup.html');
+
+/** Per-request abort controllers, so a superseded or cancelled search stops its adapters (and closes their hidden windows) instead of running to timeout. */
+const requestControllers = new Map();
+
+/** @param {string} requestId */
+function abortRequest(requestId) {
+  requestControllers.get(requestId)?.abort();
+  requestControllers.delete(requestId);
+}
 
 /**
  * Open the popup as its own small window, centered over the browser window
@@ -24,12 +33,18 @@ let popupWindowId = null;
  * extension reposition or center).
  */
 async function openCenteredPopup() {
-  if (popupWindowId !== null) {
+  // Look the popup up rather than remembering its window id: Chrome stops an
+  // idle service worker after ~30s, which would reset a module variable and
+  // let a second icon click open a duplicate window.
+  const [existing] = await chrome.runtime
+    .getContexts({ contextTypes: ['TAB'], documentUrls: [POPUP_URL] })
+    .catch(() => []);
+  if (typeof existing?.windowId === 'number') {
     try {
-      await chrome.windows.update(popupWindowId, { focused: true });
+      await chrome.windows.update(existing.windowId, { focused: true });
       return;
     } catch {
-      popupWindowId = null;
+      // Window went away between the query and the focus; open a fresh one.
     }
   }
 
@@ -42,8 +57,8 @@ async function openCenteredPopup() {
   const left = Math.max(0, Math.round(parentLeft + (parentWidth - POPUP_WIDTH) / 2));
   const top = Math.max(0, Math.round(parentTop + (parentHeight - POPUP_HEIGHT) / 2));
 
-  const win = await chrome.windows.create({
-    url: chrome.runtime.getURL('popup/popup.html'),
+  await chrome.windows.create({
+    url: POPUP_URL,
     type: 'popup',
     width: POPUP_WIDTH,
     height: POPUP_HEIGHT,
@@ -51,15 +66,10 @@ async function openCenteredPopup() {
     top,
     focused: true,
   });
-  popupWindowId = win.id ?? null;
 }
 
 chrome.action.onClicked.addListener(() => {
   openCenteredPopup().catch(() => {});
-});
-
-chrome.windows.onRemoved.addListener((closedWindowId) => {
-  if (closedWindowId === popupWindowId) popupWindowId = null;
 });
 
 /** One search function per implemented lab; each returns a result descriptor and never throws. */
@@ -69,6 +79,7 @@ const ADAPTERS = {
   perplexity: searchPerplexity,
   gemini: searchGemini,
   grok: searchGrok,
+  muse: searchMuse,
 };
 
 /**
@@ -84,13 +95,14 @@ const ADAPTERS = {
  * @param {string} requestId
  * @param {import('../lib/query.js').ParsedQuery} parsed
  * @param {string} platformId
+ * @param {AbortSignal} signal
  */
-async function runPlatform(requestId, parsed, platformId) {
+async function runPlatform(requestId, parsed, platformId, signal) {
   if (!tracker.isActive(requestId)) return;
 
   const adapter = ADAPTERS[platformId];
   const outcome = adapter
-    ? await adapter(parsed.bare)
+    ? await adapter(parsed.bare, signal)
     : { status: 'unavailable', message: `${platformId} adapter not implemented yet` };
 
   let status = outcome.status;
@@ -139,14 +151,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ? message.platforms
         : PLATFORM_ORDER;
 
+    // A new search supersedes every earlier one, including any the popup
+    // never got to cancel (closed mid-search, or a stale message).
+    for (const id of [...requestControllers.keys()]) abortRequest(id);
+    const controller = new AbortController();
+    requestControllers.set(requestId, controller);
+
     tracker.begin(requestId);
     const wallTimer = setTimeout(() => {
       tracker.cancel(requestId);
+      abortRequest(requestId);
     }, OVERALL_WALL_MS);
 
-    Promise.all(platforms.map((platformId) => runPlatform(requestId, parsed, platformId))).finally(
-      () => clearTimeout(wallTimer),
-    );
+    Promise.all(
+      platforms.map((platformId) => runPlatform(requestId, parsed, platformId, controller.signal)),
+    ).finally(() => {
+      clearTimeout(wallTimer);
+      requestControllers.delete(requestId);
+    });
 
     sendResponse({ ok: true });
     return false;
@@ -154,6 +176,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === MSG.SEARCH_CANCEL) {
     tracker.cancel(message.requestId);
+    abortRequest(message.requestId);
     sendResponse({ ok: true });
     return false;
   }
