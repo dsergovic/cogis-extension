@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Quote characters are stripped from the string sent to each lab, and a
   quoted search now highlights the phrase itself on arrival via text fragment.
 ### Fixed
+- Quoted searches no longer list Grok chats that hold only some of the
+  phrase's words. Grok matches each word on its own and reports which ones it
+  found, so a hit missing any phrase word is dropped instead of shown as
+  unverified.
 - Perplexity and Gemini failing with "Could not open a … tab". Their hidden
   search window is created fully off-screen, which Chrome can reject; this
   began after the 2026-09-10 update to Chrome 152. A rejected off-screen

@@ -34,6 +34,7 @@ describe('normalizeEvidence', () => {
       semanticRank: null,
       sources: [],
       matchKind: null,
+      wordsSpanConversation: false,
     });
   });
 
@@ -168,6 +169,35 @@ describe('classifyPointer — quoted', () => {
       matchKind: 'content',
     });
     expect(classifyPointer(hit, quoted)).toBe(TIER.WEAK);
+  });
+
+  it('drops a Grok hit that matched only some of the phrase words', () => {
+    const ezra = parseQuery('"ezra collective"');
+    const hit = pointer('Humidifier White Dust: Causes and Prevention', {
+      matchedWords: ['collective'],
+      matchKind: 'content',
+      wordsSpanConversation: true,
+    });
+    expect(classifyPointer(hit, ezra)).toBe(TIER.WEAK);
+  });
+
+  it('keeps a Grok hit that matched every phrase word, plurals included', () => {
+    const ezra = parseQuery('"ezra collective"');
+    const hit = pointer('Jazz picks for the weekend', {
+      matchedWords: ['Ezra', 'collectives'],
+      matchKind: 'content',
+      wordsSpanConversation: true,
+    });
+    expect(classifyPointer(hit, ezra)).toBe(TIER.UNVERIFIED);
+  });
+
+  it('does not apply the word check to title-only matched words', () => {
+    // Claude's matchedWords come from the title, so a body hit lists none.
+    const hit = pointer('Switch Repo from Azure DevOps to GitHub', {
+      matchedWords: [],
+      sources: ['keyword_transcript'],
+    });
+    expect(classifyPointer(hit, quoted)).toBe(TIER.UNVERIFIED);
   });
 
   it('requires every phrase when more than one is given', () => {
