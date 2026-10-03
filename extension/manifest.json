@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cogis — AI Search",
   "version": "0.1.0",
-  "description": "Search your own ChatGPT, Claude, Gemini, Perplexity, Grok, and Muse conversation history from a single popup and jump straight back in. Dev-unpacked.",
+  "description": "Search your own ChatGPT, Claude, Gemini, Perplexity, Grok, and Muse conversation history from a single popup and jump straight back in. Dev-unpacked. Built 2026-10-03 01:09 UTC.",
   "action": {
     "default_title": "Cogis — AI Search",
     "default_icon": {
