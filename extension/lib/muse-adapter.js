@@ -50,12 +50,7 @@
 
 import { stripForbiddenFields, pointerHasForbiddenFields } from './results.js';
 import { parseQuery, titleCoversTerms } from './query.js';
-import {
-  PLATFORM_TIMEOUT_MS,
-  TAB_COMPLETE_MS,
-  MAX_RESULTS_PER_PLATFORM,
-  rejectOnAbort,
-} from './timeouts.js';
+import { TAB_COMPLETE_MS, MAX_RESULTS_PER_PLATFORM, rejectOnAbort } from './timeouts.js';
 import {
   waitForTabComplete,
   sendMessageWithInjectRetry,
@@ -72,6 +67,13 @@ const ORIGIN = 'https://muse.ai';
 export const MUSE_TAB_SEARCH = 'COGIS_MUSE_TAB_SEARCH';
 
 const MAIN_CHAT_TITLE = 'Main chat';
+
+/**
+ * Muse's own budget, longer than PLATFORM_TIMEOUT_MS: opening the palette can
+ * take 4 s and its message hits arrive over a socket after that (see
+ * content/muse.js). Still inside OVERALL_WALL_MS once the tab has loaded.
+ */
+const MUSE_TIMEOUT_MS = 11000;
 
 /**
  * @param {string} threadId
@@ -207,6 +209,27 @@ export function normalizeMuseItems(items, query, now = new Date()) {
 }
 
 /**
+ * Popup copy for a search that produced no pointers, saying which step came
+ * up empty so a miss can be diagnosed from the popup. Uses room names only,
+ * which are chat titles, never message text.
+ * @param {Array<{ value?: unknown, title?: unknown }>} items
+ * @returns {string}
+ */
+export function museEmptyMessage(items) {
+  const rows = Array.isArray(items) ? items : [];
+  const messageRooms = rows
+    .filter((row) => parseMuseItemValue(row?.value).kind === 'message')
+    .map((row) => (typeof row.title === 'string' ? row.title.trim() : ''));
+  if (messageRooms.length) {
+    const names = [...new Set(messageRooms.filter(Boolean))].slice(0, 3);
+    const where = names.length ? ` (in ${names.map((n) => `"${n}"`).join(', ')})` : '';
+    return `Muse found ${messageRooms.length} matching message${messageRooms.length === 1 ? '' : 's'}${where}, but Cogis couldn't link them to a chat.`;
+  }
+  if (!rows.length) return "Muse's search box showed no rows.";
+  return "Muse's search listed no matching messages.";
+}
+
+/**
  * Run a Muse search. Returns a result descriptor the service worker turns
  * into a SEARCH_RESULT_CHUNK — never throws.
  * @param {string} query
@@ -234,7 +257,7 @@ export async function searchMuse(query, signal) {
       const err = new Error('Muse tab search timed out');
       err.code = 'timeout';
       reject(err);
-    }, PLATFORM_TIMEOUT_MS);
+    }, MUSE_TIMEOUT_MS);
   });
 
   try {
@@ -255,7 +278,10 @@ export async function searchMuse(query, signal) {
     }
 
     const pointers = normalizeMuseItems(response.items, query);
-    return { status: pointers.length ? 'ready' : 'empty', results: pointers };
+    if (!pointers.length) {
+      return { status: 'empty', results: [], message: museEmptyMessage(response.items) };
+    }
+    return { status: 'ready', results: pointers };
   } catch (err) {
     if (err?.code === 'timeout' || err?.code === 'cancelled') return { status: 'timeout' };
     return { status: 'unavailable', message: 'Could not reach the Muse tab.' };
