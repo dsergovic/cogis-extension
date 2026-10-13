@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Quote characters are stripped from the string sent to each lab, and a
   quoted search now highlights the phrase itself on arrival via text fragment.
 ### Fixed
+- Muse returning "No results." for searches Muse itself answers. Cogis
+  stopped waiting after 2.5 s with no message hits, which is too short in a
+  hidden window whose timers Chrome slows; it now waits up to 6 s. An empty
+  Muse result now says which step came up empty.
 - Muse failing with "Muse search box did not open." after it moved into the
   shared hidden window. Muse opens its own hidden window again, the setup
   that last worked live; Perplexity and Gemini still share one.

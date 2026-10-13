@@ -109,7 +109,12 @@ if (!window.__cogisMuseSearchInstalled) {
       (el.getAttribute('data-value') || '').startsWith('chat:message:'),
     ).length;
 
-  /** Message hits stream in over the socket; wait until the count stops moving. */
+  /**
+   * Message hits stream in over the socket; wait until the count stops moving.
+   * With none yet, keep waiting for the whole budget: this window is hidden,
+   * so Chrome slows its timers, and a slow socket used to end the wait at
+   * 2.5 s with nothing to show.
+   */
   const waitForResultsToSettle = async (budgetMs) => {
     const start = Date.now();
     await sleep(700);
@@ -117,7 +122,7 @@ if (!window.__cogisMuseSearchInstalled) {
     let stableTicks = 0;
     while (Date.now() - start < budgetMs) {
       const count = messageCount();
-      if (count === last && (count > 0 || Date.now() - start > 2500)) {
+      if (count === last && count > 0) {
         stableTicks += 1;
         if (stableTicks >= 2) return;
       } else {
@@ -152,7 +157,7 @@ if (!window.__cogisMuseSearchInstalled) {
         setter.call(input, message.query);
         input.dispatchEvent(new Event('input', { bubbles: true }));
 
-        await waitForResultsToSettle(3500);
+        await waitForResultsToSettle(6000);
 
         sendResponse({ status: 'ok', items: scrapeItems() });
       } catch (err) {

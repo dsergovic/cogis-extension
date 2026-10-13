@@ -4,6 +4,7 @@ import {
   parseMuseItemValue,
   parseMuseRelativeDate,
   normalizeMuseItems,
+  museEmptyMessage,
   MUSE_MAIN_CHAT_URL,
 } from '../../extension/lib/muse-adapter.js';
 
@@ -142,5 +143,29 @@ describe('normalizeMuseItems', () => {
   it('tolerates junk input', () => {
     expect(normalizeMuseItems(null, 'x')).toEqual([]);
     expect(normalizeMuseItems([null, 42, {}], 'x')).toEqual([]);
+  });
+});
+
+describe('museEmptyMessage', () => {
+  it('names the rooms of message hits that could not be linked', () => {
+    const items = [
+      { value: 'chat:message:a:1', title: 'Build tooling' },
+      { value: 'chat:message:b:1', title: 'Build tooling' },
+      { value: 'chat:thread:11111111-2222', title: 'Recipes' },
+    ];
+    expect(museEmptyMessage(items)).toBe(
+      'Muse found 2 matching messages (in "Build tooling"), but Cogis couldn\'t link them to a chat.',
+    );
+  });
+
+  it('says when the palette listed rows but no messages', () => {
+    expect(museEmptyMessage([{ value: 'ask-hatch', title: 'Send message to Hatch' }])).toBe(
+      "Muse's search listed no matching messages.",
+    );
+  });
+
+  it('says when the palette showed nothing at all', () => {
+    expect(museEmptyMessage([])).toBe("Muse's search box showed no rows.");
+    expect(museEmptyMessage(undefined)).toBe("Muse's search box showed no rows.");
   });
 });

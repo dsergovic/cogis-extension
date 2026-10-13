@@ -200,7 +200,7 @@ function render() {
     } else if (group.status === 'empty') {
       const note = document.createElement('p');
       note.className = 'status-note';
-      note.textContent = 'No results.';
+      note.textContent = group.message || 'No results.';
       content.appendChild(note);
     } else if (group.status === 'ready') {
       // A quoted search can only be *verified* against the title — body text
